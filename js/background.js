@@ -45,7 +45,7 @@ var renderIcon = function(info, tabId){
     if (!info || tabId == null || tabId < 0) return;
     
     // 构造 Title：info.location 包含了国家城市等完整信息
-    var title = info.location || (info.country + " " + info.city);
+    var title = info.location;
     
     if (lang.indexOf('zh') > -1) {
         chrome.browserAction.setTitle({title: "当前网站IP：" + title, tabId: tabId});
