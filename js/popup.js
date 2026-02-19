@@ -1,6 +1,5 @@
 var queryIp = '';
 var queryDomain = '';
-var clientIP = '';
 var refreshTimerId = 0;
 var refreshCount = 0;
 var maxRefresh = 3;
@@ -51,7 +50,6 @@ var refreshClientIP = function() {
 
     ajaxGet('https://geoip.loukky.com/ip.php', function(info) {
         if (info.status === 'success') {
-            clientIP = info.ip;
             T('client_ip').innerHTML = info.ip + ' ' + info.location;
         } else {
             T('client_ip').innerHTML = '获取失败';
@@ -60,35 +58,25 @@ var refreshClientIP = function() {
 };
 
 // 加载指定 IP 或域名信息
-var load = function(ip, domain) {
+var load = function(ip, tabId) {
+    // 优先使用后台缓存
+    if (background.tabDataCache[tabId]) {
+        render(background.tabDataCache[tabId]);
+        return;
+    }
     var url = "https://geoip.loukky.com/ip.php?";
     var isLocalIP = (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0");
 
     if (ip && ip !== "" && !isLocalIP) {
-        url += "ip=" + encodeURIComponent(ip);
-    } else if (domain && domain !== "") {
-        url += "ip=" + encodeURIComponent(domain);
-        if (clientIP && clientIP !== "") {
-            url += "&ecs=" + encodeURIComponent(clientIP);
-        }
+        url += "ip=" + encodeURIComponent(ip) + "&ecs=" + encodeURIComponent(background.clientIP);
     } else {
         return;
     }
 
     ajaxGet(url, function(info) {
         if (info.status === 'success') {
-            // 结构映射
-            var data = {
-                ip: info.ip,
-                country: info.country,
-                province: info.province,
-                city: info.city,
-                isp: info.isp,
-                asn: ["AS" + info.asn],
-                ports: [],
-                icon: info.icon
-            };
-            render(data);
+            render(info);
+            background.tabDataCache[tabId] = info;
         } else {
             T('load').style.display = '';
         }
@@ -101,7 +89,7 @@ var render = function(info){
     T('show_ip').innerHTML = info.ip;
     T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
     T('isp').innerHTML = info.isp || '';
-    T('asn').innerHTML = info.asn.join("<br/>");
+    T('asn').innerHTML = "AS" + info.asn + ("<br/>");
     T('ports').innerHTML = info.ports.join(" ");
 };
 
@@ -150,6 +138,31 @@ var init = function() {
 
     refreshClientIP();
 
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        if (tabs.length > 0) {
+            var activeTabId = tabs[0].id;
+            var currentIp = background.tabsIPMap[activeTabId];
+            var currentDomain = background.tabsDomainMap[activeTabId];
+            var queryIp = currentIp;
+            var queryDomain = currentDomain;
+            // 直接从后台按 tabId 获取数据
+            var currentData = background.tabDataCache[activeTabId];
+
+            if (queryIp) {
+                T('browser_dns_ip').innerHTML = queryIp;
+                T('domain').innerHTML = queryDomain || "Unknown";
+                var currentData = background.tabDataCache[activeTabId];
+                if (currentData) {
+                    render(currentData);
+                    } else {
+                    // 否则再执行一次 load (通常由于网络延迟导致 background 还没查完)
+                    load(queryIp, activeTabId); 
+                }
+                //load(queryIp); // 开始渲染当前网站 IP 的详情
+            }
+        }
+    });
+
     if (language.indexOf('CN') > -1) {
         chrome.browserAction.setTitle({
             title: "网站IP数据信息 Powered by Loukky GeoIP"
@@ -160,17 +173,14 @@ var init = function() {
         });
     }
 
-    chrome.tabs.query({ active: true, windowId: chrome.windows.WINDOW_ID_CURRENT }, function(tabs) {
-        if (tabs.length > 0) {
-            activeTabId = tabs[0].id;
-            refreshTimerId = setInterval(refresh, 500);
-            refresh();
-        }
-    });
-
     $('#copyright').on('click', function(){
         chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
     });
+
+    T("show_ip").onclick = function() {
+        var fip = T('show_ip').innerHTML;
+        chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
+    };
 
     c = new ClipboardJS("#copy");
 };
