@@ -53,12 +53,10 @@ var refreshClientIP = function(callback) {
         if (info.status === 'success') {
             clientIP = info.ip;
             T('client_ip').innerHTML = info.ip + ' ' + info.location;
+            if (callback) callback();
         } else {
             T('client_ip').innerHTML = '获取失败';
         }
-
-        // 拿到 clientIP 后触发回调
-        if (callback) callback();
     });
 };
 
@@ -173,14 +171,6 @@ var init = function() {
             title: "WebSite IP Information Powered by Loukky GeoIP"
         });
     }
-
-    chrome.tabs.query({ active: true, windowId: chrome.windows.WINDOW_ID_CURRENT }, function(tabs) {
-        if (tabs.length > 0) {
-            activeTabId = tabs[0].id;
-            refreshTimerId = setInterval(refresh, 500);
-            refresh();
-        }
-    });
 
     $('#copyright').on('click', function(){
         chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
