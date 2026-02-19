@@ -1,6 +1,5 @@
 var queryIp = '';
 var queryDomain = '';
-var clientIP = '';
 var refreshTimerId = 0;
 var refreshCount = 0;
 var maxRefresh = 3;
@@ -44,16 +43,14 @@ var T = function(id) {
 };
 
 // 刷新本地客户端 IP
-var refreshClientIP = function(callback) {
+var refreshClientIP = function() {
     var year = new Date().getFullYear();
     if (year < 2019) year = 2019;
     T('since_year').innerHTML = year;
 
     ajaxGet('https://geoip.loukky.com/ip.php', function(info) {
         if (info.status === 'success') {
-            clientIP = info.ip;
             T('client_ip').innerHTML = info.ip + ' ' + info.location;
-            if (callback) callback();
         } else {
             T('client_ip').innerHTML = '获取失败';
         }
@@ -61,35 +58,26 @@ var refreshClientIP = function(callback) {
 };
 
 // 加载指定 IP 或域名信息
-var load = function(ip, domain) {
+var load = function(ip) {
+
+    // 优先从后台的缓存 (ipData) 里取数据，这样点击图标时瞬间就能显示
+    if (background.tabDataCache[ip]) {
+        render(background.tabDataCache[ip]);
+        return;
+    }
     var url = "https://geoip.loukky.com/ip.php?";
     var isLocalIP = (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0");
 
     if (ip && ip !== "" && !isLocalIP) {
-        url += "ip=" + encodeURIComponent(ip);
-    } else if (domain && domain !== "") {
-        url += "ip=" + encodeURIComponent(domain);
-        if (clientIP) {
-            url += "&ecs=" + encodeURIComponent(clientIP);
-        }
+        url += "ip=" + encodeURIComponent(ip) + "&ecs=" + encodeURIComponent(background.clientIP);
     } else {
         return;
     }
 
     ajaxGet(url, function(info) {
         if (info.status === 'success') {
-            // 结构映射
-            var data = {
-                ip: info.ip,
-                country: info.country,
-                province: info.province,
-                city: info.city,
-                isp: info.isp,
-                asn: ["AS" + info.asn],
-                ports: [],
-                icon: info.icon
-            };
             render(data);
+            background.tabDataCache[tabId] = data;
         } else {
             T('load').style.display = '';
         }
@@ -102,7 +90,7 @@ var render = function(info){
     T('show_ip').innerHTML = info.ip;
     T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
     T('isp').innerHTML = info.isp || '';
-    T('asn').innerHTML = info.asn.join("<br/>");
+    T('asn').innerHTML = "AS" + info.asn + ("<br/>");
     T('ports').innerHTML = info.ports.join(" ");
 };
 
@@ -151,15 +139,31 @@ var init = function() {
         }
     });
 
-    refreshClientIP(function() {
-        // clientIP 已经拿到后才开始刷新标签信息
-        chrome.tabs.query({ active: true, windowId: chrome.windows.WINDOW_ID_CURRENT }, function(tabs) {
-            if (tabs.length > 0) {
-                activeTabId = tabs[0].id;
-                refreshTimerId = setInterval(refresh, 500);
-                refresh();
+    refreshClientIP();
+
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        if (tabs.length > 0) {
+            var activeTabId = tabs[0].id;
+            var currentIp = background.tabsIPMap[activeTabId];
+            var currentDomain = background.tabsDomainMap[activeTabId];
+            var queryIp = currentIp;
+            var queryDomain = currentDomain;
+            // 直接从后台按 tabId 获取数据
+            var currentData = background.tabDataCache[activeTabId];
+
+            if (queryIp) {
+                T('browser_dns_ip').innerHTML = queryIp;
+                T('domain').innerHTML = queryDomain || "Unknown";
+                // 如果后台已经有这个 Tab 的详细数据，直接渲染
+                if (currentData) {
+                    render(currentData);
+                    } else {
+                    // 否则再执行一次 load (通常由于网络延迟导致 background 还没查完)
+                    load(queryIp, activeTabId); 
+                }
+                //load(queryIp); // 开始渲染当前网站 IP 的详情
             }
-        });
+        }
     });
 
     if (language.indexOf('CN') > -1) {

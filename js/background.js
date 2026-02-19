@@ -2,158 +2,140 @@ var ajaxGet = function(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
     xhr.onerror = function(e){
-        callback({
-            ret:-1,
-            msg:"Network Error"
-        });
-    };
-    xhr.ontimeout = function(e){
-        callback({
-            ret:-1,
-            msg:"Request Timeout"
-        });
+        callback({ ret:-1, msg:"Network Error" });
     };
     xhr.onreadystatechange = function() {
         if (xhr.readyState == 4) {
+            var responseData;
+            var text = xhr.responseText.trim();
             try {
-                var resp = JSON.parse(xhr.responseText);
-                callback(resp);
+                if (text.indexOf('{') === 0 || text.indexOf('[') === 0) {
+                    responseData = JSON.parse(text);
+                } else {
+                    responseData = text; 
+                }
             } catch (e) {
-                callback({
-                    ret: 100,
-                    msg: "Server Response Error"
-                });
+                responseData = text; 
             }
+            callback(responseData);
         }
     };
     xhr.send();
 };
 
+var isIping = true;
 var tabsIPMap = {};
 var tabsDomainMap = {};
 var clientIP = '';
-var ipData = {};
-var dnsData = {};
+var tabDataCache = {};
 var lang = navigator.language;
-var renderIcon = function(info){
-    var title = '';
-    if (info.country.length > 0) {
-    // 设置悬浮提示
-    if (lang.indexOf('CN') > -1) {
-        chrome.browserAction.setTitle({title:"当前网站的IP地址为：" + title + "\nIP数据信息"});
+
+// 获取本机 IP
+var initClientIP = function() {
+    isIping = true;
+    ajaxGet("https://geoip.loukky.com/myip.php", function(res) {
+        clientIP = (typeof res === 'string') ? res.trim() : (res.ip || "");
+        isIping = false;
+        console.log("ECS 准备就绪:", clientIP);
+    });
+};
+initClientIP();
+
+// 核心修复 1: 渲染函数补齐
+var renderIcon = function(info, tabId){
+    if (!info || !tabId) return;
+    
+    // 构造 Title：info.location 包含了国家城市等完整信息
+    var title = info.location || (info.country + " " + info.city);
+    
+    if (lang.indexOf('zh') > -1) {
+        chrome.browserAction.setTitle({title: "当前网站IP：" + title, tabId: tabId});
     } else {
-        chrome.browserAction.setTitle({title:"The current site IP GeoLocation: " + title + "\nIP Info"});
+        chrome.browserAction.setTitle({title: "Site IP: " + title, tabId: tabId});
     }
-    }
-    // 显示本地图标，code2 转大写
+    
+    // 设置图标：优先使用 code2 转大写匹配本地文件名
     if (info.code2 && info.code2.length == 2) {
-        chrome.browserAction.setIcon({path:"icons/" + info.code2.toUpperCase() + ".png"});
+        chrome.browserAction.setIcon({path: "icons/" + info.code2.toUpperCase() + ".png", tabId: tabId});
     } else {
-        chrome.browserAction.setIcon({path:"Q.png"}); // 默认图标
+        chrome.browserAction.setIcon({path: "Q.png", tabId: tabId});
     }
 };
-var reloadTab = function(tabId){
-    chrome.tabs.reload(tabId, {}, function(){});
-};
 
-var ajaxGetText = function(url, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            callback(xhr.responseText.trim());
-        }
-    };
-    xhr.send();
-};
+// 核心修复 2: 封装带等待机制的查询
+var fetchIPInfo = function(e, domain, retryCount) {
+    // 如果 clientIP 还没拿到且正在请求中，最多等待 3 次 (约 1.5 秒)
+    if (isIping && !clientIP && retryCount < 3) {
+        setTimeout(function() {
+            fetchIPInfo(e, domain, retryCount + 1);
+        }, 500);
+        return;
+    }
 
-ajaxGetText("https://geoip.loukky.com/myip.php", function(ip){
-    clientIP = ip;
-    console.log(clientIP);
-});
-
-var IP_REGEXP = /^([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$/;
-var IP6_REGEXP = /^[\w|:|\.]+$/;
-var getSelection = function(info, t){
-	if (!IP_REGEXP.test(info.selectionText) && IP6_REGEXP.test(info.selectionText)) {
-		alert('只支持IP查询');
-		return;
-	}
-      chrome.tabs.create({ url: "https://www.ipip.net/ip/"+ info.selectionText +".html", selected: false }, function(tab) {
-     });
-};
-if  (lang.indexOf('zh') >-1) {
-	chrome.contextMenus.create({
-	    id: "ipip",
-	    contexts: ["selection"],
-	    title: "使用IPIP.NET搜索 \"%s\"",
-	    onclick:getSelection
-	});
-} else {
-	chrome.contextMenus.create({
-	    id: "ipip",
-	    contexts: ["selection"],
-	    title: "Search \"%s\" To IPIP.net",
-	    onclick:getSelection
-	});
-}
-chrome.webRequest.onCompleted.addListener(function(e) {
-    var domain = e.url.match(/:\/\/(.*?)\//)[1];
-    tabsDomainMap[e.tabId] = domain;
-    tabsIPMap[e.tabId] = e.ip;
     var isLocalIP = (e.ip === "127.0.0.1" || e.ip === "::1" || e.ip === "0.0.0.0");
     var url = "https://geoip.loukky.com/ip.php?";
+    
     if (e.ip && e.ip.length > 0 && !isLocalIP) {
         url += "ip=" + encodeURIComponent(e.ip);
-    } else if (domain && domain.length > 0) {
+    } else if (domain) {
         url += "ip=" + encodeURIComponent(domain);
-        if (clientIP) {
+    }
+    
+    // 此时不论有没有，只要拿到了就带上 ecs
+    if (clientIP) {
         url += "&ecs=" + encodeURIComponent(clientIP);
-        }
     }
 
     ajaxGet(url, function(info){
         if (info.status === 'success') {
-            ipData[e.ip || domain] = info;
-            renderIcon(info);
+            tabDataCache[e.tabId] = info; // 以 tabId 为 Key 存储
+            renderIcon(info, e.tabId);    // 显式传入 tabId
             chrome.browserAction.enable(e.tabId);
         } 
     });
+};
+
+chrome.webRequest.onCompleted.addListener(function(e) {
+    if (e.tabId === -1) return;
+    
+    var domainMatch = e.url.match(/:\/\/(.*?)\//);
+    var domain = domainMatch ? domainMatch[1] : "";
+    
+    tabsDomainMap[e.tabId] = domain;
+    tabsIPMap[e.tabId] = e.ip;
+
+    fetchIPInfo(e, domain, 0); // 发起带等待机制的查询
 
 }, {
     urls: ["http://*/*", "https://*/*"],
     types: ["main_frame"]
 });
 
-chrome.tabs.onCreated.addListener(function(tab){
-    chrome.browserAction.disable(tab.tabId)
-    chrome.browserAction.setIcon({path:"images/icon_gray_38.png"})
+// 标签切换修复
+chrome.tabs.onActivated.addListener(function(activeInfo) {
+    var tid = activeInfo.tabId;
+    if (tabDataCache[tid]) {
+        renderIcon(tabDataCache[tid], tid);
+        chrome.browserAction.enable(tid);
+    } else {
+        // 如果没有缓存，可能还在加载，先设为默认
+        chrome.browserAction.setIcon({path: "images/icon_gray_38.png", tabId: tid});
+    }
 });
 
-chrome.tabs.onActivated.addListener(function(e){
-    if (tabsIPMap[e.tabId]) {
-        chrome.browserAction.setIcon({path:"images/icon_38.png"})
-        chrome.browserAction.enable(e.tabId)
-        if (ipData[tabsIPMap[e.tabId]]) {
-            renderIcon(ipData[tabsIPMap[e.tabId]]);
-        }
-    }
+// 资源释放
+chrome.tabs.onRemoved.addListener(function(tabId) {
+    delete tabsIPMap[tabId];
+    delete tabsDomainMap[tabId];
+    delete tabDataCache[tabId];
+});
+
+// 初始状态
+chrome.tabs.onCreated.addListener(function(tab){
+    chrome.browserAction.disable(tab.tabId);
+    chrome.browserAction.setIcon({path:"images/icon_gray_38.png", tabId: tab.tabId});
 });
 
 chrome.browserAction.onClicked.addListener(function(tab) {
-    chrome.browserAction.setPopup({popup:"popup.html"})
-});
-
-var domainList = [];
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){
-    domainList = [];
-    for (p in request.ds) {
-        domainList.push({
-            "domain" : p,
-            "amount" : request.ds[p],
-        });
-    }
-    
-    return true;
+    chrome.browserAction.setPopup({popup:"popup.html"});
 });
