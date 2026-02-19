@@ -36,7 +36,6 @@ var initClientIP = function() {
     ajaxGet("https://geoip.loukky.com/myip.php", function(res) {
         clientIP = (typeof res === 'string') ? res.trim() : (res.ip || "");
         isIping = false;
-        console.log("ECS 准备就绪:", clientIP);
     });
 };
 initClientIP();

@@ -58,11 +58,10 @@ var refreshClientIP = function() {
 };
 
 // 加载指定 IP 或域名信息
-var load = function(ip) {
-
-    // 优先从后台的缓存 (ipData) 里取数据，这样点击图标时瞬间就能显示
-    if (background.tabDataCache[ip]) {
-        render(background.tabDataCache[ip]);
+var load = function(ip, tabId) {
+    // 优先使用后台缓存
+    if (background.tabDataCache[tabId]) {
+        render(background.tabDataCache[tabId]);
         return;
     }
     var url = "https://geoip.loukky.com/ip.php?";
@@ -76,8 +75,8 @@ var load = function(ip) {
 
     ajaxGet(url, function(info) {
         if (info.status === 'success') {
-            render(data);
-            background.tabDataCache[tabId] = data;
+            render(info);
+            background.tabDataCache[tabId] = info;
         } else {
             T('load').style.display = '';
         }
@@ -97,8 +96,6 @@ var render = function(info){
 // 刷新当前活动标签 IP / 域名
 var refresh = function() {
 
-    // 如果 clientIP 还没拿到，什么都不做
-    if (!clientIP) return;
     domain_view();
 
     if (background.tabsIPMap[activeTabId]) {
@@ -154,7 +151,7 @@ var init = function() {
             if (queryIp) {
                 T('browser_dns_ip').innerHTML = queryIp;
                 T('domain').innerHTML = queryDomain || "Unknown";
-                // 如果后台已经有这个 Tab 的详细数据，直接渲染
+                var currentData = background.tabDataCache[activeTabId];
                 if (currentData) {
                     render(currentData);
                     } else {
@@ -179,6 +176,11 @@ var init = function() {
     $('#copyright').on('click', function(){
         chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
     });
+
+    T("show_ip").onclick = function() {
+        var fip = T('show_ip').innerHTML;
+        chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
+    };
 
     c = new ClipboardJS("#copy");
 };
