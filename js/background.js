@@ -80,9 +80,6 @@ var getSelection = function(info, t){
 		return;
 	}
       chrome.tabs.create({ url: "https://www.ipip.net/ip/"+ info.selectionText +".html", selected: false }, function(tab) {
-            // chrome.tabs.executeScript(tab.id, {
-            //     code: "var input=document.getElementById('ip');input.value='"+info.selectionText+"';input.form.submit();"
-            // })
      });
 };
 if  (lang.indexOf('zh') >-1) {
@@ -131,7 +128,6 @@ chrome.webRequest.onCompleted.addListener(function(e) {
 chrome.tabs.onCreated.addListener(function(tab){
     chrome.browserAction.disable(tab.tabId)
     chrome.browserAction.setIcon({path:"images/icon_gray_38.png"})
-    // chrome.browserAction.setIcon({path:"images/icon_38.png"});
 });
 
 chrome.tabs.onActivated.addListener(function(e){

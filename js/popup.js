@@ -44,7 +44,7 @@ var T = function(id) {
 };
 
 // 刷新本地客户端 IP
-var refreshClientIP = function() {
+var refreshClientIP = function(callback) {
     var year = new Date().getFullYear();
     if (year < 2019) year = 2019;
     T('since_year').innerHTML = year;
@@ -56,6 +56,9 @@ var refreshClientIP = function() {
         } else {
             T('client_ip').innerHTML = '获取失败';
         }
+
+        // 拿到 clientIP 后触发回调
+        if (callback) callback();
     });
 };
 
@@ -68,7 +71,7 @@ var load = function(ip, domain) {
         url += "ip=" + encodeURIComponent(ip);
     } else if (domain && domain !== "") {
         url += "ip=" + encodeURIComponent(domain);
-        if (clientIP && clientIP !== "") {
+        if (clientIP) {
             url += "&ecs=" + encodeURIComponent(clientIP);
         }
     } else {
@@ -108,6 +111,8 @@ var render = function(info){
 // 刷新当前活动标签 IP / 域名
 var refresh = function() {
 
+    // 如果 clientIP 还没拿到，什么都不做
+    if (!clientIP) return;
     domain_view();
 
     if (background.tabsIPMap[activeTabId]) {
@@ -148,7 +153,16 @@ var init = function() {
         }
     });
 
-    refreshClientIP();
+    refreshClientIP(function() {
+        // clientIP 已经拿到后才开始刷新标签信息
+        chrome.tabs.query({ active: true, windowId: chrome.windows.WINDOW_ID_CURRENT }, function(tabs) {
+            if (tabs.length > 0) {
+                activeTabId = tabs[0].id;
+                refreshTimerId = setInterval(refresh, 500);
+                refresh();
+            }
+        });
+    });
 
     if (language.indexOf('CN') > -1) {
         chrome.browserAction.setTitle({
