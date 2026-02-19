@@ -3,6 +3,6 @@
       "message": "查詢當前訪問網站的 IP 地址的地理位置，國旗，所屬 ASN 等資訊。"
    },
    "extName": {
-      "message": "网站 IP 信息查询"
+      "message": "網站 IP 資訊查詢"
    }
 }
