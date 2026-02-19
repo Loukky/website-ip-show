@@ -42,7 +42,7 @@ initClientIP();
 
 // 核心修复 1: 渲染函数补齐
 var renderIcon = function(info, tabId){
-    if (!info || !tabId) return;
+    if (!info || tabId == null || tabId < 0) return;
     
     // 构造 Title：info.location 包含了国家城市等完整信息
     var title = info.location || (info.country + " " + info.city);
