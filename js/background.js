@@ -60,26 +60,25 @@ var renderIcon = function(tabId){
     }
 };
 
-var fetchIPInfo = function(e, domain, retryCount) {
+var fetchIPInfo = function(e, domain, retryCount, reinitCount) {
+    reinitCount = reinitCount || 0;
     // 如果 clientIP 还没拿到
     if (!clientIP) {
         if (retryCount < 5) {
             // 正常的短时间轮询重试
             setTimeout(function() {
-                fetchIPInfo(e, domain, retryCount + 1);
+                fetchIPInfo(e, domain, retryCount + 1, reinitCount);
             }, 300);
         } else {
-            // 【核心优化】：5 次重试结束仍无 clientIP
-            console.log("ClientIP 获取持续失败，尝试重新初始化 initClientIP...");
-            
-            // 1. 重新发起获取本机 IP 的请求
-            initClientIP(); 
-            
-            // 2. 延迟一段时间后，重置 retryCount 重新开始新一轮重试
-            // 给 initClientIP 一点时间（比如 1秒）来完成网络请求
-            setTimeout(function() {
-                fetchIPInfo(e, domain, 0); 
-            }, 1000);
+            if (reinitCount < 2) {
+                console.log("ClientIP 获取持续失败，尝试重新初始化 initClientIP...");
+                initClientIP();
+                setTimeout(function() {
+                    fetchIPInfo(e, domain, 0, reinitCount + 1);
+                }, 1000);
+            } else {
+                console.warn("ClientIP 获取最终失败，放弃重试 tabId:", e.tabId);
+            }
         }
         return;
     }
@@ -122,7 +121,7 @@ chrome.webRequest.onCompleted.addListener(function(e) {
     tabsDomainMap[e.tabId] = domain;
     tabsIPMap[e.tabId] = e.ip;
 
-    fetchIPInfo(e, domain, 0); // 发起带等待机制的查询
+    fetchIPInfo(e, domain, 0, 0);
 
 }, {
     urls: ["http://*/*", "https://*/*"],

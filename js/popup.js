@@ -189,19 +189,8 @@ var init = function() {
         $('#dns dd').removeClass('active');
         $(this).addClass('active');
 
-        // 发起新查询更新右侧
-        var url = "https://geoip.loukky.com/ip.php?ip=" + encodeURIComponent(targetIp);
-        if (background.clientIP) url += "&ecs=" + encodeURIComponent(background.clientIP);
+        loadSpecificIP(targetIp);
 
-        ajaxGet(url, function(res) {
-            if (res.status === 'success') {
-                T('show_ip').innerHTML = res.ip;
-                T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
-                T('isp').innerHTML = res.isp || '';
-                T('asn').innerHTML = res.asn ? "AS" + res.asn : "";
-                T('ports').innerHTML = (res.ports && Array.isArray(res.ports)) ? res.ports.join(" ") : "";
-            }
-        });
     });
 
     // 3. 绑定 Browser Side 点击事件 (点击上方 IP 区域恢复显示初始访问 IP)
