@@ -63,11 +63,25 @@ var renderIcon = function(tabId){
 };
 
 var fetchIPInfo = function(e, domain, retryCount) {
+    // 如果 clientIP 还没拿到
     if (!clientIP) {
         if (retryCount < 5) {
+            // 正常的短时间轮询重试
             setTimeout(function() {
                 fetchIPInfo(e, domain, retryCount + 1);
             }, 300);
+        } else {
+            // 【核心优化】：5 次重试结束仍无 clientIP
+            console.log("ClientIP 获取持续失败，尝试重新初始化 initClientIP...");
+            
+            // 1. 重新发起获取本机 IP 的请求
+            initClientIP(); 
+            
+            // 2. 延迟一段时间后，重置 retryCount 重新开始新一轮重试
+            // 给 initClientIP 一点时间（比如 1秒）来完成网络请求
+            setTimeout(function() {
+                fetchIPInfo(e, domain, 0); 
+            }, 1000);
         }
         return;
     }
