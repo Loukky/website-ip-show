@@ -85,36 +85,41 @@ var load = function(ip, tabId) {
 };
 
 
-var render = function(tabId) {
+// popup.js 修复后的 render 函数
+var render = function(tabId){
     var info = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId] || {};
     var dnsInfo = background.tabdomaindatainfo[tabId] || {};
-
-    // 渲染右侧主信息
-    T('show_ip').innerHTML = info.ip || '';
+    console.log("info:" + info );
+    console.log("dnsinfo:" + dnsInfo);
+    
+    // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
+    T('show_ip').innerHTML = info.ip;
     T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
-    T('isp').innerHTML = info.isp || '';
+    T('isp').innerHTML = info.isp;
     T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
     T('ports').innerHTML = (info.ports && Array.isArray(info.ports)) ? info.ports.join(" ") : "";
 
-    // 渲染 Server Side 列表
+    // 2. 核心修改：渲染左侧 Server Side 列表
     if (dnsInfo.resolved_ips && Array.isArray(dnsInfo.resolved_ips)) {
-        var visitIp = info.ip; 
+        var visitIp = background.tabsIPMap[activeTabId]; 
         var html = ['<dt>Server Side</dt>'];
         
-        // 核心判断：如果是本地回环 IP，不过滤任何结果
+        // 判断当前 Browser Side 是否为本地 IP
         var isLocal = ['127.0.0.1', '::1', '0.0.0.0'].includes(visitIp);
         
-        var listToShow = isLocal 
-            ? dnsInfo.resolved_ips 
-            : dnsInfo.resolved_ips.filter(ip => ip !== visitIp);
-
-        if (listToShow.length > 0) {
-            listToShow.forEach(function(ip) {
-                html.push('<dd><span>' + ip + '</span><span class="arrows glyphicon glyphicon-triangle-right"></span></dd>');
+        var listToShow = dnsInfo.resolved_ips;
+        // 只有当不是本地 IP 时，才执行过滤逻辑
+        if (!isLocal) {
+            listToShow = dnsInfo.resolved_ips.filter(function(ip) {
+                return ip !== visitIp;
             });
-        } else {
-            return;
         }
+
+        // 构造列表 HTML
+        listToShow.forEach(function(ip) {
+            html.push('<dd><span>' + ip + '</span><span class="arrows glyphicon glyphicon-triangle-right"></span></dd>');
+        });
+        
         T('dns').innerHTML = html.join('');
     }
 };
