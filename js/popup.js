@@ -186,7 +186,7 @@ var init = function() {
         var targetIp = $(this).find('span').first().text();
         if (!targetIp) return;
 
-        $('#dns dd').removeClass('active');
+        $('.ips dd').removeClass('active');
         $(this).addClass('active');
 
         loadSpecificIP(targetIp);
