@@ -93,6 +93,7 @@ var fetchIPInfo = function(e, domain, retryCount) {
             if (data?.status === 'success') {
                 tabipdatainfo[e.tabId] = data;
                 renderIcon(e.tabId);
+                chrome.browserAction.enable(e.tabId);
             }
         });
     }
@@ -105,6 +106,7 @@ var fetchIPInfo = function(e, domain, retryCount) {
                 tabdomaindatainfo[e.tabId] = data;
                 if (!tabipdatainfo[e.tabId]) {
                     renderIcon(e.tabId);
+                    chrome.browserAction.enable(e.tabId);
                 }
             }
         });
