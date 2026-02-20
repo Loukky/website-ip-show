@@ -26,7 +26,6 @@ var ajaxGet = function(url, callback) {
 var tabsIPMap = {};
 var tabsDomainMap = {};
 var clientIP = '';
-var tabDataCache = {};
 var lang = navigator.language;
 var tabipdatainfo = {};
 var tabdomaindatainfo = {};
@@ -40,10 +39,9 @@ function initClientIP() {
 initClientIP();
 
 var renderIcon = function(tabId){
+    if (tabId == null || tabId < 0) return;
     var info = tabipdatainfo[tabId] || tabdomaindatainfo[tabId];
     if (!info) return;
-
-    if (!info || tabId == null || tabId < 0) return;
     
     // 构造 Title：info.location 包含了国家城市等完整信息
     var title = info.location;
@@ -87,7 +85,7 @@ var fetchIPInfo = function(e, domain, retryCount) {
     }
 
     const baseUrl = "https://geoip.loukky.com/ip.php?";
-    const ecsPart = clientIP ? `&ecs=${encodeURIComponent(clientIP)}` : '';
+    const ecsPart = `&ecs=${encodeURIComponent(clientIP)}`;
     // 查询 IP
     if (e.ip && !['127.0.0.1', '::1', '0.0.0.0'].includes(e.ip)) {
         const ipUrl = `${baseUrl}ip=${encodeURIComponent(e.ip)}${ecsPart}`;
