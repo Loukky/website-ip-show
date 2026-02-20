@@ -92,8 +92,6 @@ var load = function(ip, tabId) {
 var render = function(tabId){
     var info = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId] || {};
     var dnsInfo = background.tabdomaindatainfo[tabId] || {};
-    console.log("info:" + info );
-    console.log("dnsinfo:" + dnsInfo);
     
     // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
     T('show_ip').innerHTML = info.ip;
