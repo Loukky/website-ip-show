@@ -49,9 +49,9 @@ var refreshClientIP = function() {
 
     ajaxGet('https://geoip.loukky.com/ip.php', function(info) {
         if (info.status === 'success') {
-            T('client_ip').innerHTML = info.ip + ' ' + info.location;
+            T('client_ip').textContent = info.ip + ' ' + info.location;
         } else {
-            T('client_ip').innerHTML = '获取失败';
+            T('client_ip').textContent = '获取失败';
         }
     });
 };
