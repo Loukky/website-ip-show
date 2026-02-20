@@ -122,7 +122,7 @@ var render = function(tabId) {
                 html.push('<dd><span>' + ip + '</span><span class="arrows glyphicon glyphicon-triangle-right"></span></dd>');
             });
         } else {
-            html.push('<dd style="color:#ccc; font-size:12px;">No other IPs</dd>');
+            return;
         }
         T('dns').innerHTML = html.join('');
     }
