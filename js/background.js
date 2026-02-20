@@ -23,7 +23,6 @@ var ajaxGet = function(url, callback) {
     xhr.send();
 };
 
-var isIping = true;
 var tabsIPMap = {};
 var tabsDomainMap = {};
 var clientIP = '';
@@ -32,10 +31,8 @@ var lang = navigator.language;
 
 // 获取本机 IP
 var initClientIP = function() {
-    isIping = true;
     ajaxGet("https://geoip.loukky.com/myip.php", function(res) {
         clientIP = (typeof res === 'string') ? res.trim() : (res.ip || "");
-        isIping = false;
     });
 };
 initClientIP();
