@@ -151,8 +151,6 @@ var loadSpecificIP = function(ip) {
 // 刷新当前活动标签 IP / 域名
 var refresh = function() {
 
-    domain_view();
-
     if (background.tabsIPMap[activeTabId]) {
         queryIp = background.tabsIPMap[activeTabId];
         T('browser_dns_ip').innerHTML = queryIp;
@@ -248,24 +246,5 @@ var init = function() {
 
     if (typeof ClipboardJS !== 'undefined') new ClipboardJS("#copy");
 };
-
-function domain_view()
-{
-    $('#domain_num').text(background.domainList.length);
-    var ds = [];
-    var dhtml = [];
-    background.domainList.sort(function(a, b){
-        return b.amount - a.amount;
-    });
-    background.domainList.forEach(function(v, k){
-        ds.push(v.domain);
-        dhtml.push('<dl class="dsl">');
-        dhtml.push('<dt>'+ v.domain +'</dt>');
-        dhtml.push('<dd>'+ v.amount +'</dd>');
-        dhtml.push('</dl>');
-    });
-    $('#domains').html('<div>'+dhtml.join('')+'</div>');
-    $('#copy').attr('data-clipboard-text', ds.join("\n"));
-}
 
 init();
