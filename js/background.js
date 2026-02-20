@@ -154,8 +154,8 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
 
 // 初始状态
 chrome.tabs.onCreated.addListener(function(tab){
-    chrome.browserAction.disable(tab.tabId);
-    chrome.browserAction.setIcon({path:"images/icon_gray_38.png", tabId: tab.tabId});
+    chrome.browserAction.disable(tab.id);
+    chrome.browserAction.setIcon({path:"images/icon_gray_38.png", tabId: tab.id});
 });
 
 chrome.browserAction.onClicked.addListener(function(tab) {
