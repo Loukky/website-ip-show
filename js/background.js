@@ -63,11 +63,12 @@ var renderIcon = function(info, tabId){
 
 // 核心修复 2: 封装带等待机制的查询
 var fetchIPInfo = function(e, domain, retryCount) {
-    // 如果 clientIP 还没拿到且正在请求中，最多等待 3 次 (约 1.5 秒)
-    if (isIping && !clientIP && retryCount < 3) {
-        setTimeout(function() {
-            fetchIPInfo(e, domain, retryCount + 1);
-        }, 500);
+    if (!clientIP) {
+        if (retryCount < 5) {
+            setTimeout(function() {
+                fetchIPInfo(e, domain, retryCount + 1);
+            }, 300);
+        }
         return;
     }
 
