@@ -245,7 +245,7 @@ var init = function() {
         chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
     });
 
-    T("show_ip").onclick = function() {
+    T("to_ipip").onclick = function() {
         var fip = T('show_ip').innerHTML;
         if(fip) chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
     };
