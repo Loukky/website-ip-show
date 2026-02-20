@@ -238,14 +238,10 @@ var init = function() {
 
     // 5. 其他 UI 处理
     if (language.indexOf('CN') > -1) {
-        chrome.browserAction.setTitle({ title: "网站IP数据信息 Powered by Loukky GeoIP" });
+        chrome.browserAction.setTitle({ title: "网站IP数据信息" });
     }
 
-    $('#copyright').on('click', function(){
-        chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
-    });
-
-    T("to_ipip").onclick = function() {
+    T("to_ipquery").onclick = function() {
         var fip = T('show_ip').innerHTML;
         if(fip) chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
     };
