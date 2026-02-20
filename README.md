@@ -1,5 +1,5 @@
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Loukky/website-ip-show?utm_source=oss&utm_medium=github&utm_campaign=Loukky%2Fwebsite-ip-show&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)  
-Website IP Show  
+# Website IP Show  
 一个简洁的 Chrome 扩展程序，用于实时显示当前网站的服务器 IP 归属地、CDN 解析组及网络详细信息。  
   
 ### ✨ 主要功能  
