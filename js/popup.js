@@ -6,7 +6,6 @@ var maxRefresh = 3;
 var activeTabId = 0;
 var background = chrome.extension.getBackgroundPage();
 var language = navigator.language;
-
 var ajaxGet = function(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
@@ -50,9 +49,9 @@ var refreshClientIP = function() {
 
     ajaxGet('https://geoip.loukky.com/ip.php', function(info) {
         if (info.status === 'success') {
-            T('client_ip').innerHTML = info.ip + ' ' + info.location;
+            T('client_ip').textContent = info.ip + ' ' + info.location;
         } else {
-            T('client_ip').innerHTML = '获取失败';
+            T('client_ip').textContent = '获取失败';
         }
     });
 };
@@ -60,23 +59,28 @@ var refreshClientIP = function() {
 // 加载指定 IP 或域名信息
 var load = function(ip, tabId) {
     // 优先使用后台缓存
-    if (background.tabDataCache[tabId]) {
-        render(background.tabDataCache[tabId]);
+    var data = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId];
+    if (data) {
+        render(tabId);
         return;
     }
+
     var url = "https://geoip.loukky.com/ip.php?";
     var isLocalIP = (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0");
 
     if (ip && ip !== "" && !isLocalIP) {
-        url += "ip=" + encodeURIComponent(ip) + "&ecs=" + encodeURIComponent(background.clientIP);
+         url += "ip=" + encodeURIComponent(ip);
+         if (background.clientIP) {
+             url += "&ecs=" + encodeURIComponent(background.clientIP);
+             }
     } else {
         return;
     }
 
     ajaxGet(url, function(info) {
         if (info.status === 'success') {
-            render(info);
-            background.tabDataCache[tabId] = info;
+            background.tabipdatainfo[tabId] = info; // 存入 IP 缓存
+            render(tabId);
         } else {
             T('load').style.display = '';
         }
@@ -84,19 +88,74 @@ var load = function(ip, tabId) {
 };
 
 
-// 渲染到页面
-var render = function(info){
+// popup.js 修复后的 render 函数
+var render = function(tabId){
+    var info = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId] || {};
+    var dnsInfo = background.tabdomaindatainfo[tabId] || {};
+    
+    // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
     T('show_ip').innerHTML = info.ip;
     T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
-    T('isp').innerHTML = info.isp || '';
-    T('asn').innerHTML = "AS" + info.asn + ("<br/>");
-    T('ports').innerHTML = info.ports.join(" ");
+    T('isp').innerHTML = info.isp;
+    T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
+    T('ports').innerHTML = (info.ports && Array.isArray(info.ports)) ? info.ports.join(" ") : "";
+
+    // 2. 核心修改：渲染左侧 Server Side 列表
+    if (dnsInfo.resolved_ips && Array.isArray(dnsInfo.resolved_ips)) {
+        var visitIp = background.tabsIPMap[tabId]; 
+        var html = ['<dt>Server Side</dt>'];
+        
+        // 判断当前 Browser Side 是否为本地 IP
+        var isLocal = ['127.0.0.1', '::1', '0.0.0.0'].includes(visitIp);
+        
+        var listToShow = dnsInfo.resolved_ips;
+        // 只有当不是本地 IP 时，才执行过滤逻辑
+        if (!isLocal) {
+            listToShow = dnsInfo.resolved_ips.filter(function(ip) {
+                return ip !== visitIp;
+            });
+        }
+
+        // 构造列表 HTML
+        listToShow.forEach(function(ip) {
+            html.push('<dd><span>' + ip + '</span><span class="arrows glyphicon glyphicon-triangle-right"></span></dd>');
+        });
+        
+        T('dns').innerHTML = html.join('');
+    }
+};
+
+// popup.js 新增：用于点击列表后切换右侧详情
+var loadSpecificIP = function(ip) {
+    var url = "https://geoip.loukky.com/ip.php?ip=" + encodeURIComponent(ip);
+    
+    // 如果后台已获取到 clientIP (ECS)，则带上以保证解析准确
+    if (background.clientIP) {
+        url += "&ecs=" + encodeURIComponent(background.clientIP);
+    }
+
+    ajaxGet(url, function(res) {
+        if (res.status === 'success') {
+            // 仅更新右侧详情面板，不破坏左侧列表
+            T('show_ip').innerHTML = res.ip;
+            T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
+            T('isp').innerHTML = res.isp;
+            
+            // 处理 ASN
+            if (res.asn) {
+                T('asn').innerHTML = Array.isArray(res.asn) ? "AS" + res.asn.join("<br/>AS") : "AS" + res.asn;
+            } else {
+                T('asn').innerHTML = "";
+            }
+            
+            // 渲染端口
+            T('ports').innerHTML = (res.ports && Array.isArray(res.ports)) ? res.ports.join(" ") : "";
+        }
+    });
 };
 
 // 刷新当前活动标签 IP / 域名
 var refresh = function() {
-
-    domain_view();
 
     if (background.tabsIPMap[activeTabId]) {
         queryIp = background.tabsIPMap[activeTabId];
@@ -110,7 +169,7 @@ var refresh = function() {
 
     if (queryIp !== '' && queryDomain !== '') {
         clearInterval(refreshTimerId);
-        load(queryIp, queryDomain);
+        load(queryIp, activeTabId);
     } else {
         if (refreshCount >= maxRefresh) {
             clearInterval(refreshTimerId);
@@ -122,86 +181,65 @@ var refresh = function() {
 
 
 // 初始化
+// popup.js 中的 init 函数完整版
 var init = function() {
-    $('.ips').delegate('dd', 'click', function(){
-        var ip = $(this).text();
-        if (!!background.dnsData[queryIp]) {
-            $('.ips dd').removeClass('active');
-            $(this).addClass('active');
-            $.each(background.dnsData[queryIp], function(k, v){
-                if (v.ip == ip) {
-                    render(v);
-                }
-            })
-        }
-    });
-
+    // 1. 刷新底部本地客户端 IP
     refreshClientIP();
 
+    // 2. 核心：绑定左侧 Server Side IP 列表的点击事件
+    // popup.js 中的 init 内部点击绑定
+    $(document).on('click', '#dns dd', function() {
+        var targetIp = $(this).find('span').first().text();
+        if (!targetIp) return;
+
+        $('.ips dd').removeClass('active');
+        $(this).addClass('active');
+
+        loadSpecificIP(targetIp);
+
+    });
+
+    // 3. 绑定 Browser Side 点击事件 (点击上方 IP 区域恢复显示初始访问 IP)
+    $(document).on('click', '#layoutL .ips:first-child dd', function() {
+        $('#dns dd').removeClass('active');
+        $(this).addClass('active');
+        
+        // 重新渲染初始缓存的数据
+        render(activeTabId);
+    });
+
+    // 4. 获取当前活动标签并进行初始渲染
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         if (tabs.length > 0) {
-            var activeTabId = tabs[0].id;
+            activeTabId = tabs[0].id;
+            
             var currentIp = background.tabsIPMap[activeTabId];
             var currentDomain = background.tabsDomainMap[activeTabId];
-            var queryIp = currentIp;
-            var queryDomain = currentDomain;
-            // 直接从后台按 tabId 获取数据
-            var currentData = background.tabDataCache[activeTabId];
 
-            if (queryIp) {
-                T('browser_dns_ip').innerHTML = queryIp;
-                T('domain').innerHTML = queryDomain || "Unknown";
-                var currentData = background.tabDataCache[activeTabId];
-                if (currentData) {
-                    render(currentData);
-                    } else {
-                    // 否则再执行一次 load (通常由于网络延迟导致 background 还没查完)
-                    load(queryIp, activeTabId); 
-                }
-                //load(queryIp); // 开始渲染当前网站 IP 的详情
+            if (currentIp) T('browser_dns_ip').innerHTML = currentIp;
+            if (currentDomain) T('domain').innerHTML = currentDomain;
+
+            // 如果后台已有数据则直接渲染，否则根据当前 IP 发起加载
+            var mainData = background.tabipdatainfo[activeTabId] || background.tabdomaindatainfo[activeTabId];
+            if (mainData) {
+                render(activeTabId);
+            } else if (currentIp) {
+                load(currentIp, activeTabId);
             }
         }
     });
 
+    // 5. 其他 UI 处理
     if (language.indexOf('CN') > -1) {
-        chrome.browserAction.setTitle({
-            title: "网站IP数据信息 Powered by Loukky GeoIP"
-        });
-    } else {
-        chrome.browserAction.setTitle({
-            title: "WebSite IP Information Powered by Loukky GeoIP"
-        });
+        chrome.browserAction.setTitle({ title: "网站IP数据信息" });
     }
 
-    $('#copyright').on('click', function(){
-        chrome.tabs.create({ url: "https://geoip.loukky.com", selected: true });
-    });
-
-    T("show_ip").onclick = function() {
-        var fip = T('show_ip').innerHTML;
-        chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
+    T("to_ipquery").onclick = function() {
+        var fip = T('show_ip').textContent;
+        if(fip) chrome.tabs.create({ url: "https://geoip.loukky.com/?ip=" + fip });
     };
 
-    c = new ClipboardJS("#copy");
+    if (typeof ClipboardJS !== 'undefined') new ClipboardJS("#copy");
 };
-
-function domain_view()
-{
-    $('#domain_num').text(background.domainList.length);
-    var ds = [];
-    var dhtml = [];
-    background.domainList.sort(function(a, b){
-        return b.amount - a.amount;
-    });
-    background.domainList.forEach(function(v, k){
-        ds.push(v.domain);
-        dhtml.push('<dl class="dsl">');
-        dhtml.push('<dt>'+ v.domain +'</dt>');
-        dhtml.push('<dd>'+ v.amount +'</dd>');
-        dhtml.push('</dl>');
-    });
-    $('#domains').html('<div>'+dhtml.join('')+'</div>');
-    $('#copy').attr('data-clipboard-text', ds.join("\n"));
-}
 
 init();
