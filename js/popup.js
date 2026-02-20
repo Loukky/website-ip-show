@@ -85,48 +85,35 @@ var load = function(ip, tabId) {
 };
 
 
-// popup.js 修改后的 render 函数
 var render = function(tabId) {
-    // mainInfo 决定右侧面板和图标
-    var mainInfo = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId];
-    // dnsInfo 决定左侧 Server Side 列表
-    var dnsInfo = background.tabdomaindatainfo[tabId];
+    var info = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId] || {};
+    var dnsInfo = background.tabdomaindatainfo[tabId] || {};
 
-    if (!mainInfo) return;
+    // 渲染右侧主信息
+    T('show_ip').innerHTML = info.ip || '';
+    T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
+    T('isp').innerHTML = info.isp || '';
+    T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
+    T('ports').innerHTML = (info.ports && Array.isArray(info.ports)) ? info.ports.join(" ") : "";
 
-    // 渲染右侧主面板
-    T('show_ip').innerHTML = mainInfo.ip || '';
-    T('location').innerHTML = [mainInfo.country, mainInfo.province, mainInfo.city].filter(Boolean).join(" ");
-    T('isp').innerHTML = mainInfo.isp || '';
-    if (mainInfo.asn) {
-        T('asn').innerHTML = Array.isArray(mainInfo.asn) ? "AS" + mainInfo.asn.join("<br/>AS") : "AS" + mainInfo.asn;
-    } else {
-        T('asn').innerHTML = "";
-    }
-    T('ports').innerHTML = (mainInfo.ports && Array.isArray(mainInfo.ports)) ? mainInfo.ports.join(" ") : "";
-
-    // 渲染左侧 Server Side
-    if (dnsInfo && dnsInfo.resolved_ips) {
-        var visitIp = mainInfo.ip; 
+    // 渲染 Server Side 列表
+    if (dnsInfo.resolved_ips && Array.isArray(dnsInfo.resolved_ips)) {
+        var visitIp = info.ip; 
         var html = ['<dt>Server Side</dt>'];
         
-        // 判断逻辑：如果是这三个本地 IP，则不进行过滤（即不过滤 visitIp）
+        // 核心判断：如果是本地回环 IP，不过滤任何结果
         var isLocal = ['127.0.0.1', '::1', '0.0.0.0'].includes(visitIp);
         
-        var listToShow = dnsInfo.resolved_ips;
-        if (!isLocal) {
-            // 如果不是本地 IP，则执行过滤，去掉正在显示的访问 IP
-            listToShow = dnsInfo.resolved_ips.filter(function(ip) {
-                return ip !== visitIp;
-            });
-        }
+        var listToShow = isLocal 
+            ? dnsInfo.resolved_ips 
+            : dnsInfo.resolved_ips.filter(ip => ip !== visitIp);
 
         if (listToShow.length > 0) {
             listToShow.forEach(function(ip) {
                 html.push('<dd><span>' + ip + '</span><span class="arrows glyphicon glyphicon-triangle-right"></span></dd>');
             });
         } else {
-            return;
+            html.push('<dd style="color:#ccc; font-size:12px;">No other IPs</dd>');
         }
         T('dns').innerHTML = html.join('');
     }
@@ -196,18 +183,27 @@ var init = function() {
     refreshClientIP();
 
     // 2. 核心：绑定左侧 Server Side IP 列表的点击事件
-    // 使用 $(document).on 确保动态生成的列表项也能被点击
+    // popup.js 中的 init 内部点击绑定
     $(document).on('click', '#dns dd', function() {
         var targetIp = $(this).find('span').first().text();
-        // 简单的 IP 格式校验
-        if (!targetIp || targetIp.indexOf('.') === -1 && targetIp.indexOf(':') === -1) return;
+        if (!targetIp) return;
 
-        // 切换 UI 选中状态
         $('#dns dd').removeClass('active');
         $(this).addClass('active');
 
-        // 执行特定 IP 的详情查询
-        loadSpecificIP(targetIp);
+        // 发起新查询更新右侧
+        var url = "https://geoip.loukky.com/ip.php?ip=" + encodeURIComponent(targetIp);
+        if (background.clientIP) url += "&ecs=" + encodeURIComponent(background.clientIP);
+
+        ajaxGet(url, function(res) {
+            if (res.status === 'success') {
+                T('show_ip').innerHTML = res.ip;
+                T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
+                T('isp').innerHTML = res.isp || '';
+                T('asn').innerHTML = res.asn ? "AS" + res.asn : "";
+                T('ports').innerHTML = (res.ports && Array.isArray(res.ports)) ? res.ports.join(" ") : "";
+            }
+        });
     });
 
     // 3. 绑定 Browser Side 点击事件 (点击上方 IP 区域恢复显示初始访问 IP)
