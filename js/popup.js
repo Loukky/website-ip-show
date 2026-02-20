@@ -69,7 +69,10 @@ var load = function(ip, tabId) {
     var isLocalIP = (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0");
 
     if (ip && ip !== "" && !isLocalIP) {
-        url += "ip=" + encodeURIComponent(ip) + "&ecs=" + encodeURIComponent(background.clientIP);
+         url += "ip=" + encodeURIComponent(ip);
+         if (background.clientIP) {
+             url += "&ecs=" + encodeURIComponent(background.clientIP);
+             }
     } else {
         return;
     }
