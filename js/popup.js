@@ -98,7 +98,11 @@ var render = function(tabId) {
     T('show_ip').innerHTML = mainInfo.ip || '';
     T('location').innerHTML = [mainInfo.country, mainInfo.province, mainInfo.city].filter(Boolean).join(" ");
     T('isp').innerHTML = mainInfo.isp || '';
-    T('asn').innerHTML = "AS" + (mainInfo.asn || '') + "<br/>";
+    if (mainInfo.asn) {
+        T('asn').innerHTML = Array.isArray(mainInfo.asn) ? "AS" + mainInfo.asn.join("<br/>AS") : "AS" + mainInfo.asn;
+    } else {
+        T('asn').innerHTML = "";
+    }
     T('ports').innerHTML = (mainInfo.ports && Array.isArray(mainInfo.ports)) ? mainInfo.ports.join(" ") : "";
 
     // 渲染左侧 Server Side
