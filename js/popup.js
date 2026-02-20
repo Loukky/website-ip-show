@@ -101,7 +101,7 @@ var render = function(tabId){
 
     // 2. 核心修改：渲染左侧 Server Side 列表
     if (dnsInfo.resolved_ips && Array.isArray(dnsInfo.resolved_ips)) {
-        var visitIp = background.tabsIPMap[activeTabId]; 
+        var visitIp = background.tabsIPMap[tabId]; 
         var html = ['<dt>Server Side</dt>'];
         
         // 判断当前 Browser Side 是否为本地 IP
@@ -136,9 +136,9 @@ var loadSpecificIP = function(ip) {
     ajaxGet(url, function(res) {
         if (res.status === 'success') {
             // 仅更新右侧详情面板，不破坏左侧列表
-            T('show_ip').innerHTML = res.ip || '';
+            T('show_ip').innerHTML = res.ip;
             T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
-            T('isp').innerHTML = res.isp || '';
+            T('isp').innerHTML = res.isp;
             
             // 处理 ASN
             if (res.asn) {
