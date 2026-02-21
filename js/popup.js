@@ -98,7 +98,6 @@ var render = function(tabId){
     T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
     T('isp').innerHTML = info.isp;
     T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
-    T('ports').innerHTML = (info.ports && Array.isArray(info.ports)) ? info.ports.join(" ") : "";
 
     // 2. 核心修改：渲染左侧 Server Side 列表
     if (dnsInfo.resolved_ips && Array.isArray(dnsInfo.resolved_ips)) {
@@ -147,9 +146,6 @@ var loadSpecificIP = function(ip) {
             } else {
                 T('asn').innerHTML = "";
             }
-            
-            // 渲染端口
-            T('ports').innerHTML = (res.ports && Array.isArray(res.ports)) ? res.ports.join(" ") : "";
         }
     });
 };
