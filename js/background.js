@@ -128,6 +128,22 @@ chrome.webRequest.onCompleted.addListener(function(e) {
     types: ["main_frame"]
 });
 
+chrome.webRequest.onBeforeRequest.addListener(function(e) {
+    if (e.tabId !== -1) {
+        // 请求开始，立即禁用图标并重置该 Tab 的缓存，防止旧图标残留
+        chrome.browserAction.disable(e.tabId);
+        chrome.browserAction.setIcon({path:"images/icon_gray_38.png", tabId: e.tabId});
+        
+        delete tabipdatainfo[e.tabId];
+        delete tabdomaindatainfo[e.tabId];
+        delete tabsIPMap[e.tabId];
+        delete tabsDomainMap[e.tabId];
+    }
+}, {
+    urls: ["http://*/*", "https://*/*"],
+    types: ["main_frame"]
+});
+
 // 标签切换修复
 chrome.tabs.onActivated.addListener(function(activeInfo) {
     var tid = activeInfo.tabId;
@@ -158,6 +174,6 @@ chrome.tabs.onCreated.addListener(function(tab){
     chrome.browserAction.setIcon({path:"images/icon_gray_38.png", tabId: tab.id});
 });
 
-chrome.browserAction.onClicked.addListener(function(tab) {
-    chrome.browserAction.setPopup({popup:"popup.html"});
-});
+// chrome.browserAction.onClicked.addListener(function(tab) {
+//     chrome.browserAction.setPopup({popup:"popup.html"});
+// });

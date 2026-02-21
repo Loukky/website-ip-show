@@ -8,7 +8,7 @@
          "38": "images/icon_38.png"
       },
       "default_popup": "popup.html",
-      "default_title": "WebSite IP Information query Powered by IPIP.net"
+      "default_title": "WebSite IP Information query"
    },
    "content_scripts": [ {
       "js": [ "js/jquery-3.3.1.min.js", "js/psl.min.js", "js/content-script.js" ],
