@@ -95,8 +95,8 @@ var render = function(tabId){
     
     // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
     T('show_ip').innerHTML = info.ip;
-    T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ");
-    T('isp').innerHTML = info.isp;
+    T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ") || "";
+    T('isp').innerHTML = info.isp || "";
     T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
 
     // 2. 核心修改：渲染左侧 Server Side 列表
