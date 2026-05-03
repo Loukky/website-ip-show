@@ -53,7 +53,7 @@ var renderIcon = function(tabId){
     }
     
     // 设置图标：优先使用 code2 转大写匹配本地文件名
-    if (info.code2 && info.code2.length == 2) {
+    if (info.code2 && info.code2 !== "zz" && info.code2.length == 2) {
         chrome.browserAction.setIcon({path: "icons/" + info.code2.toUpperCase() + ".png", tabId: tabId});
     } else {
         chrome.browserAction.setIcon({path: "Q.png", tabId: tabId});

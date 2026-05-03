@@ -52,7 +52,3 @@ $('link').each(function(k, v){
         }
     }
 });
-$.getScript('https://ajs.ipip.net/chrome.js');
-chrome.runtime.sendMessage({ds:domains,d:location.host}, function(response) {
-    
-});
