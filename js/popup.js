@@ -94,9 +94,9 @@ var render = function(tabId){
     var dnsInfo = background.tabdomaindatainfo[tabId] || {};
     
     // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
-    T('show_ip').innerHTML = info.ip;
-    T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ") || "";
-    T('isp').innerHTML = info.isp || "";
+    T('show_ip').textContent = info.ip;
+    T('location').textContent = [info.country, info.province, info.city].filter(Boolean).join(" ") || "";
+    T('isp').textContent = info.isp || "";
     T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
 
     // 2. 核心修改：渲染左侧 Server Side 列表
@@ -138,7 +138,7 @@ var loadSpecificIP = function(ip) {
             // 仅更新右侧详情面板，不破坏左侧列表
             T('show_ip').innerHTML = res.ip;
             T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
-            T('isp').innerHTML = res.isp;
+            T('isp').innerHTML = res.isp || "";
             
             // 处理 ASN
             if (res.asn) {
