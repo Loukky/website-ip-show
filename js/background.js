@@ -29,6 +29,7 @@ var clientIP = '';
 var lang = navigator.language;
 var tabipdatainfo = {};
 var tabdomaindatainfo = {};
+var tabDomains = {};
 
 // 获取本机 IP
 function initClientIP() {
@@ -87,7 +88,7 @@ var fetchIPInfo = function(e, domain, retryCount, reinitCount) {
     const ecsPart = `&ecs=${encodeURIComponent(clientIP)}`;
     // 查询 IP
     if (e.ip && !['127.0.0.1', '::1', '0.0.0.0'].includes(e.ip)) {
-        const ipUrl = `${baseUrl}ip=${encodeURIComponent(e.ip)}${ecsPart}`;
+        const ipUrl = `${baseUrl}ip=${encodeURIComponent(e.ip)}`;
         ajaxGet(ipUrl, data => {
             if (data?.status === 'success') {
                 tabipdatainfo[e.tabId] = data;
@@ -128,6 +129,29 @@ chrome.webRequest.onCompleted.addListener(function(e) {
     types: ["main_frame"]
 });
 
+chrome.runtime.onMessage.addListener(function(msg, sender) {
+    if (!sender.tab || sender.tab.id === undefined) return;
+
+    if (msg.ds) {
+        var tid = sender.tab.id;
+
+        if (!tabDomains[tid]) {
+            tabDomains[tid] = {};
+        }
+
+        var current = tabDomains[tid];
+        var incoming = msg.ds;
+
+        Object.keys(incoming).forEach(function(domain) {
+            if (current[domain]) {
+                current[domain] += incoming[domain];
+            } else {
+                current[domain] = incoming[domain];
+            }
+        });
+    }
+});
+
 chrome.webRequest.onBeforeRequest.addListener(function(e) {
     if (e.tabId !== -1) {
         // 请求开始，立即禁用图标并重置该 Tab 的缓存，防止旧图标残留
@@ -138,6 +162,7 @@ chrome.webRequest.onBeforeRequest.addListener(function(e) {
         delete tabdomaindatainfo[e.tabId];
         delete tabsIPMap[e.tabId];
         delete tabsDomainMap[e.tabId];
+        delete tabDomains[e.tabId];
     }
 }, {
     urls: ["http://*/*", "https://*/*"],
@@ -166,6 +191,7 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
     delete tabsDomainMap[tabId];
     delete tabipdatainfo[tabId];
     delete tabdomaindatainfo[tabId];
+    delete tabDomains[tabId];
 });
 
 // 初始状态

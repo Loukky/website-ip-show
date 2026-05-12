@@ -41,6 +41,43 @@ var T = function(id) {
     return document.getElementById(id);
 };
 
+var renderDomains = function(tabId) {
+    var domains = background.tabDomains[tabId];
+    if (!domains || Object.keys(domains).length === 0) {
+        T('layoutR2').style.display = 'none';
+        T('domains').innerHTML = "";
+        return;
+    }
+
+    var container = T('domains');
+    var copyBtn = T('copy');
+
+    var html = [];
+    var copyList = [];
+
+    Object.keys(domains)
+        .sort(function(a, b) {
+            return domains[b] - domains[a]; // 按次数排序
+        })
+        .forEach(function(domain) {
+            var count = domains[domain];
+
+            html.push(
+                '<div class="domain-item">' +
+                    '<span>' + domain + '</span>' +
+                    '<span style="float:right;">' + count + '</span>' +
+                '</div>'
+            );
+
+            copyList.push(domain);
+        });
+
+    container.innerHTML = html.join('');
+    copyBtn.setAttribute('data-clipboard-text', copyList.join('\n'));
+
+    T('layoutR2').style.display = '';
+};
+
 // 刷新本地客户端 IP
 var refreshClientIP = function() {
     var year = new Date().getFullYear();
@@ -62,6 +99,7 @@ var load = function(ip, tabId) {
     var data = background.tabipdatainfo[tabId] || background.tabdomaindatainfo[tabId];
     if (data) {
         render(tabId);
+        renderDomains(tabId);
         return;
     }
 
@@ -94,9 +132,9 @@ var render = function(tabId){
     var dnsInfo = background.tabdomaindatainfo[tabId] || {};
     
     // 1. 右侧面板渲染保持原状：正常通过后台获取的 info 数据显示
-    T('show_ip').textContent = info.ip;
-    T('location').textContent = [info.country, info.province, info.city].filter(Boolean).join(" ") || "";
-    T('isp').textContent = info.isp || "";
+    T('show_ip').innerHTML = info.ip;
+    T('location').innerHTML = [info.country, info.province, info.city].filter(Boolean).join(" ") || "";
+    T('isp').innerHTML = info.isp || "";
     T('asn').innerHTML = info.asn ? "AS" + info.asn + "<br/>" : "";
 
     // 2. 核心修改：渲染左侧 Server Side 列表
@@ -138,7 +176,7 @@ var loadSpecificIP = function(ip) {
             // 仅更新右侧详情面板，不破坏左侧列表
             T('show_ip').innerHTML = res.ip;
             T('location').innerHTML = [res.country, res.province, res.city].filter(Boolean).join(" ");
-            T('isp').innerHTML = res.isp || "";
+            T('isp').innerHTML = res.isp;
             
             // 处理 ASN
             if (res.asn) {
@@ -202,6 +240,7 @@ var init = function() {
         
         // 重新渲染初始缓存的数据
         render(activeTabId);
+        renderDomains(activeTabId);
     });
 
     // 4. 获取当前活动标签并进行初始渲染
@@ -219,6 +258,7 @@ var init = function() {
             var mainData = background.tabipdatainfo[activeTabId] || background.tabdomaindatainfo[activeTabId];
             if (mainData) {
                 render(activeTabId);
+                renderDomains(activeTabId);
             } else if (currentIp) {
                 load(currentIp, activeTabId);
             }
