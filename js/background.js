@@ -48,7 +48,7 @@ var renderIcon = function(tabId){
     var title = info.location;
     
     if (lang.indexOf('zh') > -1) {
-        chrome.browserAction.setTitle({title: "当前网站IP：" + title, tabId: tabId});
+        chrome.browserAction.setTitle({title: "当前网站IP:" + title, tabId: tabId});
     } else {
         chrome.browserAction.setTitle({title: "Site IP: " + title, tabId: tabId});
     }
